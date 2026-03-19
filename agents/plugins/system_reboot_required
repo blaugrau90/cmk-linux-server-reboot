@@ -67,7 +67,8 @@ if [ "$reboot_required" = "0" ] && command -v needs-restarting >/dev/null 2>&1; 
 fi
 
 # Method 4: RPM kernel comparison (RPM-based distros without needs-restarting)
-if [ "$reboot_required" = "0" ] && command -v rpm >/dev/null 2>&1 && command -v uname >/dev/null 2>&1; then
+# Skip on Debian/Ubuntu systems where rpm may be installed but is not the primary package manager
+if [ "$reboot_required" = "0" ] && command -v rpm >/dev/null 2>&1 && ! command -v dpkg >/dev/null 2>&1 && command -v uname >/dev/null 2>&1; then
     running_kernel=$(uname -r)
     # Get the most recently installed kernel version from RPM database
     # rpm -q kernel --last lists kernels newest first; take the first line
