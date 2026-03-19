@@ -1,0 +1,86 @@
+#!/bin/sh
+# system_reboot_required - CheckMK agent plugin to detect pending system reboots
+#
+# Copyright (C) 2026  Luca-Leon Hausdoerfer - (cmk@hausdoerfer.dev)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+echo '<<<system_reboot_required>>>'
+
+reboot_required=0
+detection_method="none"
+since_timestamp="unknown"
+packages="unknown"
+
+# Helper: get file mtime as unix timestamp
+get_mtime() {
+    _file="$1"
+    if stat -c %Y "$_file" 2>/dev/null; then
+        return
+    fi
+    # BSD stat fallback (macOS)
+    if stat -f %m "$_file" 2>/dev/null; then
+        return
+    fi
+    echo "unknown"
+}
+
+# Method 1: Debian/Ubuntu /var/run/reboot-required
+if [ -f /var/run/reboot-required ]; then
+    reboot_required=1
+    detection_method="reboot-required-file"
+    since_timestamp=$(get_mtime /var/run/reboot-required)
+    if [ -f /var/run/reboot-required.pkgs ]; then
+        packages=$(tr '\n' ',' < /var/run/reboot-required.pkgs | sed 's/,$//')
+    fi
+fi
+
+# Method 2: /run/reboot-required (some distros use /run instead of /var/run)
+if [ "$reboot_required" = "0" ] && [ -f /run/reboot-required ]; then
+    reboot_required=1
+    detection_method="run-reboot-required-file"
+    since_timestamp=$(get_mtime /run/reboot-required)
+    if [ -f /run/reboot-required.pkgs ]; then
+        packages=$(tr '\n' ',' < /run/reboot-required.pkgs | sed 's/,$//')
+    fi
+fi
+
+# Method 3: needs-restarting (RHEL/CentOS/Rocky/AlmaLinux 7+)
+if [ "$reboot_required" = "0" ] && command -v needs-restarting >/dev/null 2>&1; then
+    if ! needs-restarting -r >/dev/null 2>&1; then
+        reboot_required=1
+        detection_method="needs-restarting"
+        since_timestamp="unknown"
+        packages="unknown"
+    fi
+fi
+
+# Method 4: RPM kernel comparison (RPM-based distros without needs-restarting)
+if [ "$reboot_required" = "0" ] && command -v rpm >/dev/null 2>&1 && command -v uname >/dev/null 2>&1; then
+    running_kernel=$(uname -r)
+    # Get the most recently installed kernel version from RPM database
+    # rpm -q kernel --last lists kernels newest first; take the first line
+    latest_installed=$(rpm -q kernel --last 2>/dev/null | head -1 | awk '{print $1}' | sed 's/^kernel-//')
+    if [ -n "$latest_installed" ] && [ "$running_kernel" != "$latest_installed" ]; then
+        reboot_required=1
+        detection_method="rpm-kernel-mismatch"
+        since_timestamp="unknown"
+        packages="kernel-${latest_installed}"
+    fi
+fi
+
+echo "reboot_required: ${reboot_required}"
+echo "detection_method: ${detection_method}"
+echo "since_timestamp: ${since_timestamp}"
+echo "packages: ${packages}"
