@@ -1,0 +1,21 @@
+{
+    'author': 'Luca-Leon Hausdoerfer - (cmk@hausdoerfer.dev)',
+    'description': 'Checks whether a system reboot is pending on Linux hosts. '
+                   'Supports Debian, Ubuntu, RHEL, CentOS, Rocky, AlmaLinux, openSUSE and more. '
+                   'Detection methods: /var/run/reboot-required (Debian/Ubuntu), '
+                   'needs-restarting (RHEL/CentOS 7+), and RPM kernel version comparison.',
+    'download_url': 'https://github.com/blaugrau90/cmk-linux-server-reboot',
+    'files': {
+        'agents': ['plugins/system_reboot_required'],
+        'cmk_addons_plugins': [
+            'system_reboot_required/agent_based/system_reboot_required.py',
+            'system_reboot_required/rulesets/system_reboot_required.py',
+        ],
+    },
+    'name': 'system_reboot_required',
+    'title': 'System Reboot Required',
+    'version': '1.0.0',
+    'version.min_required': '2.3.0b1',
+    'version.packaged': 'cmk-mkp-tool 1.0.0',
+    'version.usable_until': None,
+}
