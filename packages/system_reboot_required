@@ -14,7 +14,7 @@
     },
     'name': 'system_reboot_required',
     'title': 'System Reboot Required',
-    'version': '1.0.0',
+    'version': '1.0.1',
     'version.min_required': '2.3.0b1',
     'version.packaged': 'cmk-mkp-tool 1.0.0',
     'version.usable_until': None,
